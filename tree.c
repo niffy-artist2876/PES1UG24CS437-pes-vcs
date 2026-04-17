@@ -140,6 +140,7 @@ static int write_tree_level(IndexEntry *entries, int count, size_t prefix_len, O
         const char *rel = entries[i].path + prefix_len;
         const char *slash = strchr(rel, '/');
         if (!slash) {
+            if (tree.count >= MAX_TREE_ENTRIES) return -1;
             TreeEntry *te = &tree.entries[tree.count++];
             te->mode = entries[i].mode;
             te->hash = entries[i].hash;
@@ -163,6 +164,7 @@ static int write_tree_level(IndexEntry *entries, int count, size_t prefix_len, O
 
             ObjectID sub_id;
             if (write_tree_level(entries + i, j - i, new_prefix, &sub_id) != 0) return -1;
+            if (tree.count >= MAX_TREE_ENTRIES) return -1;
             TreeEntry *te = &tree.entries[tree.count++];
             te->mode = MODE_DIR;
             te->hash = sub_id;
