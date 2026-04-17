@@ -135,13 +135,41 @@ static int write_tree_level(IndexEntry *entries, int count, size_t prefix_len, O
     Tree tree;
     tree.count = 0;
 
-    for (int i = 0; i < count; i++) {
+    int i = 0;
+    while (i < count) {
         const char *rel = entries[i].path + prefix_len;
-        TreeEntry *te = &tree.entries[tree.count++];
-        te->mode = entries[i].mode;
-        te->hash = entries[i].hash;
-        strncpy(te->name, rel, sizeof(te->name) - 1);
-        te->name[sizeof(te->name) - 1] = '\0';
+        const char *slash = strchr(rel, '/');
+        if (!slash) {
+            TreeEntry *te = &tree.entries[tree.count++];
+            te->mode = entries[i].mode;
+            te->hash = entries[i].hash;
+            strncpy(te->name, rel, sizeof(te->name) - 1);
+            te->name[sizeof(te->name) - 1] = '\0';
+            i++;
+        } else {
+            size_t dir_len = (size_t)(slash - rel);
+            char dir_name[256];
+            if (dir_len >= sizeof(dir_name)) return -1;
+            memcpy(dir_name, rel, dir_len);
+            dir_name[dir_len] = '\0';
+
+            int j = i;
+            size_t new_prefix = prefix_len + dir_len + 1;
+            while (j < count) {
+                const char *r = entries[j].path + prefix_len;
+                if (strncmp(r, dir_name, dir_len) == 0 && r[dir_len] == '/') j++;
+                else break;
+            }
+
+            ObjectID sub_id;
+            if (write_tree_level(entries + i, j - i, new_prefix, &sub_id) != 0) return -1;
+            TreeEntry *te = &tree.entries[tree.count++];
+            te->mode = MODE_DIR;
+            te->hash = sub_id;
+            strncpy(te->name, dir_name, sizeof(te->name) - 1);
+            te->name[sizeof(te->name) - 1] = '\0';
+            i = j;
+        }
     }
 
     void *data;
