@@ -109,6 +109,12 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
 
     if (object_exists(id_out)) { free(full); return 0; }
 
+    char shard_dir[512];
+    char hex[HASH_HEX_SIZE + 1];
+    hash_to_hex(id_out, hex);
+    snprintf(shard_dir, sizeof(shard_dir), "%s/%.2s", OBJECTS_DIR, hex);
+    mkdir(shard_dir, 0755);
+
     char obj_path[512], tmp_path[520];
     object_path(id_out, obj_path, sizeof(obj_path));
     snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", obj_path);
