@@ -24,6 +24,8 @@
 #include <unistd.h>
 #include <dirent.h>
 
+int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out);
+
 // ─── PROVIDED ────────────────────────────────────────────────────────────────
 
 // Find an index entry by path (linear scan).
@@ -135,10 +137,21 @@ int index_status(const Index *index) {
 //
 // Returns 0 on success, -1 on error.
 int index_load(Index *index) {
-    // TODO: Implement index loading
-    // (See Lab Appendix for logical steps)
-    (void)index;
-    return -1;
+    index->count = 0;
+    FILE *f = fopen(INDEX_FILE, "r");
+    if (!f) return 0;
+    char hex[HASH_HEX_SIZE + 1];
+    while (index->count < MAX_INDEX_ENTRIES) {
+        IndexEntry *e = &index->entries[index->count];
+        if (fscanf(f, "%o %64s %llu %u %511s",
+                   &e->mode, hex,
+                   (unsigned long long *)&e->mtime_sec,
+                   &e->size, e->path) != 5) break;
+        if (hex_to_hash(hex, &e->hash) != 0) { fclose(f); return -1; }
+        index->count++;
+    }
+    fclose(f);
+    return 0;
 }
 
 // Save the index to .pes/index atomically.
