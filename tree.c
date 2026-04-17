@@ -144,8 +144,10 @@ static int write_tree_level(IndexEntry *entries, int count, size_t prefix_len, O
             TreeEntry *te = &tree.entries[tree.count++];
             te->mode = entries[i].mode;
             te->hash = entries[i].hash;
-            strncpy(te->name, rel, sizeof(te->name) - 1);
-            te->name[sizeof(te->name) - 1] = '\0';
+            size_t rel_len = strlen(rel);
+            if (rel_len >= sizeof(te->name)) rel_len = sizeof(te->name) - 1;
+            memcpy(te->name, rel, rel_len);
+            te->name[rel_len] = '\0';
             i++;
         } else {
             size_t dir_len = (size_t)(slash - rel);
@@ -168,8 +170,9 @@ static int write_tree_level(IndexEntry *entries, int count, size_t prefix_len, O
             TreeEntry *te = &tree.entries[tree.count++];
             te->mode = MODE_DIR;
             te->hash = sub_id;
-            strncpy(te->name, dir_name, sizeof(te->name) - 1);
-            te->name[sizeof(te->name) - 1] = '\0';
+            size_t dn_len = dir_len < sizeof(te->name) - 1 ? dir_len : sizeof(te->name) - 1;
+            memcpy(te->name, dir_name, dn_len);
+            te->name[dn_len] = '\0';
             i = j;
         }
     }
