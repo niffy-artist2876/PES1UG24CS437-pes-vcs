@@ -141,13 +141,22 @@ int index_load(Index *index) {
     FILE *f = fopen(INDEX_FILE, "r");
     if (!f) return 0;
     char hex[HASH_HEX_SIZE + 1];
-    while (index->count < MAX_INDEX_ENTRIES) {
+    while (1) {
+        if (index->count >= MAX_INDEX_ENTRIES) {
+            fprintf(stderr, "error: index has too many entries\n");
+            fclose(f);
+            return -1;
+        }
         IndexEntry *e = &index->entries[index->count];
         if (fscanf(f, "%o %64s %llu %u %511s",
                    &e->mode, hex,
                    (unsigned long long *)&e->mtime_sec,
                    &e->size, e->path) != 5) break;
-        if (hex_to_hash(hex, &e->hash) != 0) { fclose(f); return -1; }
+        if (hex_to_hash(hex, &e->hash) != 0) {
+            fprintf(stderr, "error: malformed hash in index\n");
+            fclose(f);
+            return -1;
+        }
         index->count++;
     }
     fclose(f);
