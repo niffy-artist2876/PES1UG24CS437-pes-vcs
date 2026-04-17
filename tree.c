@@ -132,8 +132,24 @@ int tree_serialize(const Tree *tree, void **data_out, size_t *len_out) {
 //
 // Returns 0 on success, -1 on error.
 static int write_tree_level(IndexEntry *entries, int count, size_t prefix_len, ObjectID *id_out) {
-    (void)entries; (void)count; (void)prefix_len; (void)id_out;
-    return -1;
+    Tree tree;
+    tree.count = 0;
+
+    for (int i = 0; i < count; i++) {
+        const char *rel = entries[i].path + prefix_len;
+        TreeEntry *te = &tree.entries[tree.count++];
+        te->mode = entries[i].mode;
+        te->hash = entries[i].hash;
+        strncpy(te->name, rel, sizeof(te->name) - 1);
+        te->name[sizeof(te->name) - 1] = '\0';
+    }
+
+    void *data;
+    size_t data_len;
+    if (tree_serialize(&tree, &data, &data_len) != 0) return -1;
+    int ret = object_write(OBJ_TREE, data, data_len, id_out);
+    free(data);
+    return ret;
 }
 
 int tree_from_index(ObjectID *id_out) {
